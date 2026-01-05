@@ -8,8 +8,14 @@ import * as web_lib from "./web_lib/js_lib.js" ;
 import * as ui_slider from "./web_lib/ui_slider.js";
 import { Camera } from "./objs/camera.js";
   
-var moveCloser = false;
-var moveAway = false;
+var inputCamera = {
+  moveCloser: false,
+  moveAway: false,
+  moveRight: false,
+  moveLeft: false,
+  moveUp: false,
+  moveDown: false,
+} 
 
 async function main( ) {
   const htmlObjs = { canvas:null };
@@ -25,6 +31,9 @@ async function main( ) {
   gl_lib.Setup( canvas , gl );
 
   await SetupProgramBaseProgram( programs , gl );
+
+  await gl_lib.LoadObj( "../resources/cloud.obj" );
+
 
   let then = 0;
 
@@ -47,7 +56,8 @@ async function main( ) {
     
     InputToFunction( camera , deltaTime );
 
-    scene.Search( "planet" ).rotation[0] += 0.5 * deltaTime;
+
+
     scene.CalculateWorldMatrix( camera.GetViewProjectionMatrix( gl ) );
     scene.Draw( gl );
     requestAnimationFrame( DrawScene );
@@ -82,30 +92,75 @@ async function SetupProgramBaseProgram( programs , gl ) {
 }
 
 function InputToFunction( camera , deltaTime ) {
-  if( moveCloser ) {
+  if( inputCamera.moveCloser ) {
     camera.MoveCloser( deltaTime );
-    moveCloser = false;
   }
-  if( moveAway ) {
+  if( inputCamera.moveAway ) {
     camera.MoveAway( deltaTime );
-    moveAway = false;
+  }
+  if( inputCamera.moveUp ) {
+    camera.MoveUp( deltaTime );
+  }
+  if( inputCamera.moveDown ) {
+    camera.MoveDown( deltaTime );
+  }
+  if( inputCamera.moveLeft ) {
+    camera.MoveLeft( deltaTime );
+  }
+  if( inputCamera.moveRight ) {
+    camera.MoveRight( deltaTime );
   }
 }
 
 function SetupInput( ) {
-  document.addEventListener('keypress', (event) => {
+  document.addEventListener('keydown', (event) => {
     switch (event.key) {
-      case 'z':
-        moveCloser = true;
+      case 'q':
+        inputCamera.moveCloser = true;
         break;
-      case 'x':
-        moveAway = true;
+      case 'e':
+        inputCamera.moveAway = true;
         break;
-    
+      case 'w':
+        inputCamera.moveUp = true;
+        break;
+      case 's':
+        inputCamera.moveDown = true;
+        break;
+      case 'a':
+        inputCamera.moveLeft = true;
+        break;
+      case 'd':
+        inputCamera.moveRight = true;
+        break;
       default:
         break;
     }
-});
+  });
+  document.addEventListener('keyup', (event) => {
+    switch (event.key) {
+      case 'q':
+        inputCamera.moveCloser = false;
+        break;
+      case 'e':
+        inputCamera.moveAway = false;
+        break;
+      case 'w':
+        inputCamera.moveUp = false;
+        break;
+      case 's':
+        inputCamera.moveDown = false;
+        break;
+      case 'a':
+        inputCamera.moveLeft = false;
+        break;
+      case 'd':
+        inputCamera.moveRight = false;
+        break;
+      default:
+        break;
+    }
+  });
 }
 
 

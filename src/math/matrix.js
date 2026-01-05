@@ -17,19 +17,17 @@ export var matrix4x4 = {
             0 , 0 , 0 , 1 ,
         ]
     },
-    ViewMatrix: function( position , up , target ) {
-        let u , v , w;
-        w = vector4.Normalize( target );
-        w = [ w[0] , w[1] , w[2] ];
-        u = vector4.Normalize( vector4.Cross( up , w ) );
-        v = vector4.Cross( w , u );
-        let matrix = [ 
-            u[0] , u[1] , u[2] , -position[0] ,
-            v[0] , v[1] , v[2] , -position[1] ,
-            w[0] , w[1] , w[2] , -position[2] ,
-            0 , 0 , 0 , 1 ,
-        ];
-        return matrix4x4.Inverse( matrix );
+    ViewMatrix: function( position , up , forward ) {
+            let f = vector4.Normalize(forward);
+            let r = vector4.Normalize(vector4.Cross(f, up));
+            let u = vector4.Cross(r, f);
+
+            return [
+                r[0],  r[1],  r[2],  -vector4.Dot(r, position),
+                u[0],  u[1],  u[2],  -vector4.Dot(u, position),
+            -f[0], -f[1], -f[2],   vector4.Dot(f, position),
+                0,     0,     0,      1,
+            ];
     },
     Perspective: function(fieldOfViewInDegrees , aspect , near , far) {
         var fov = 1 / Math.tan((fieldOfViewInDegrees * Math.PI) / 180 / 2);
@@ -39,6 +37,14 @@ export var matrix4x4 = {
           0 , fov , 0 , 0 ,
           0 , 0 , (far + near) / (near - far) , (2 * far * near) / (near - far),
           0 , 0 , -1 , 0,
+        ];
+    },
+    MultVector4: function( matrix , vector ) {
+        return [
+            matrix[0] * vector[0] + matrix[4] * vector[1] + matrix[8] * vector[2] + matrix[12] * vector[3],
+            matrix[1] * vector[0] + matrix[5] * vector[1] + matrix[9] * vector[2] + matrix[13] * vector[3],
+            matrix[2] * vector[0] + matrix[6] * vector[1] + matrix[10] * vector[2] + matrix[14] * vector[3],
+            matrix[3] * vector[0] + matrix[7] * vector[1] + matrix[11] * vector[2] + matrix[14] * vector[3]
         ];
     },
     XRotation: function( angleInRadians ) {
@@ -106,6 +112,50 @@ export var matrix4x4 = {
             m03, m13, m23, m33
         ];
     },
+    LookAt: function( eye, target, up ) {
+
+        // forward (direção da câmera)
+        let f = vector4.Normalize(
+            vector4.Sub( target, eye )
+        );
+
+        // right
+        let r = vector4.Normalize(
+            vector4.Cross( f, up )
+        );
+
+        // up corrigido
+        let u = vector4.Cross( r, f );
+
+        // matriz de view
+        let m = matrix4x4.Identity();
+
+        m[0]  = r[0];
+        m[1]  = r[1];
+        m[2]  = r[2];
+        m[3]  = -vector4.Dot( r, eye );
+
+        // ROW 1
+        m[4]  = u[0];
+        m[5]  = u[1];
+        m[6]  = u[2];
+        m[7]  = -vector4.Dot( u, eye );
+
+        // ROW 2
+        m[8]  = -f[0];
+        m[9]  = -f[1];
+        m[10] = -f[2];
+        m[11] =  vector4.Dot( f, eye );
+
+        // ROW 3
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = 0;
+        m[15] = 1;
+
+        return m;
+    },
+
     Inverse: function(m) {
         var m00 = m[0 * 4 + 0];
         var m01 = m[0 * 4 + 1];

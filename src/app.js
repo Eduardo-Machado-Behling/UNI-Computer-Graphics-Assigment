@@ -32,7 +32,7 @@ async function main( ) {
 
   await SetupProgramBaseProgram( programs , gl );
 
-  await gl_lib.LoadObj( "../resources/cloud.obj" );
+  await gl_lib.LoadObj( "./resources/cloud.obj" );
 
 
   let then = 0;

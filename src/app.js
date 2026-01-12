@@ -38,8 +38,12 @@ async function main( ) {
 
   scene = new World( gl , null , "world" );
   scene.AddToScene( "world" , new Sphere( gl , programs.baseProgram , "planet" ) );
-  scene.AddToScene( "planet" , new Cloud( gl , programs.baseProgram , "cloud" , scene.Search( "planet" ).radius ) );
-  await scene.Search( "cloud" ).LoadObj( gl );
+  scene.AddToScene( "planet" , new Cloud( gl , programs.baseProgram , "cloud-1" , scene.Search( "planet" ).radius , vector4.Create( 1 , 0.5 , 1.5 ,1 ) ) );
+  scene.AddToScene( "planet" , new Cloud( gl , programs.baseProgram , "cloud-2" , scene.Search( "planet" ).radius , vector4.Create( 0 , 1.5 , 1.75 ,1 ) ) );
+  scene.AddToScene( "planet" , new Cloud( gl , programs.baseProgram , "cloud-3" , scene.Search( "planet" ).radius , vector4.Create( 0.5 , 0.75 , 0 ,1 ) ) );
+  await scene.Search( "cloud-1" ).LoadObj( gl );
+  await scene.Search( "cloud-2" ).LoadObj( gl );
+  await scene.Search( "cloud-3" ).LoadObj( gl );
   scene.Search( "planet" ).drawWireframe = false;
 
   
@@ -60,8 +64,8 @@ async function main( ) {
 
 
     scene.Animate( gl , deltaTime );
-    scene.CalculateWorldMatrix( camera.GetViewProjectionMatrix( gl ) );
-    scene.Draw( gl );
+    scene.CalculateWorldMatrix( matrix4x4.Identity() );
+    scene.Draw( gl , camera.GetViewProjectionMatrix( gl ) );
     requestAnimationFrame( DrawScene );
   }
 }
@@ -88,6 +92,8 @@ async function SetupProgramBaseProgram( programs , gl ) {
   programs.baseProgram.program = gl_lib.CreateProgram( gl , await gl_lib.CreateShader( gl , gl.VERTEX_SHADER , "shader.vert" ) , await gl_lib.CreateShader( gl , gl.FRAGMENT_SHADER , "shader.frag" ) );
   programs.baseProgram.a_position = gl.getAttribLocation( programs.baseProgram.program , "a_position" );
   programs.baseProgram.u_matrix = gl.getUniformLocation( programs.baseProgram.program , "u_matrix" );
+  console.log( gl.getUniformLocation( programs.baseProgram.program , "u_matrix" ) , gl.getUniformLocation( programs.baseProgram.program , "u_inverseTransposedMatrix" ) );
+  programs.baseProgram.u_inverseTransposedMatrix = gl.getUniformLocation( programs.baseProgram.program , "u_inverseTransposedMatrix" );
   programs.baseProgram.u_texture = gl.getUniformLocation( programs.baseProgram.program , "u_texture" );
   programs.baseProgram.a_uv_cord = gl.getAttribLocation( programs.baseProgram.program , "a_uv_cord" );
   programs.baseProgram.a_normal = gl.getAttribLocation( programs.baseProgram.program , "a_normal" );

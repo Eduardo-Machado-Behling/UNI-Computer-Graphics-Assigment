@@ -43,7 +43,7 @@ export function Setup( canvas , gl ) {
   gl.clearColor( 0.5, 0.5, 0.5, 1.0 );
   gl.canvas.width = canvas.width;
   gl.canvas.height = canvas.height;
-  gl.enable( gl.CULL_FACE );
+  /* gl.enable( gl.CULL_FACE ); */
   gl.enable( gl.DEPTH_TEST );
   gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 }

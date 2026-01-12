@@ -26,6 +26,7 @@ export class Obj {
     children = [];
     drawWireframe = false;
     worldMatrix = matrix4x4.Identity();
+    inverseTransposeWorldMatrix = matrix4x4.Identity();
 
     constructor( gl , program , name ) {
         this.program = program;
@@ -47,19 +48,17 @@ export class Obj {
         this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.Scaling( this.scale[0] , this.scale[1] , this.scale[2] ) );
         this.worldMatrix = matrix4x4.Mult( parentMatrix , this.worldMatrix );
         
+        this.inverseTransposeWorldMatrix = matrix4x4.Transpose( matrix4x4.Inverse( this.worldMatrix ) );
+
         for (let index = 0; index < this.children.length; index++) {
             this.children[index].CalculateWorldMatrix( this.worldMatrix );
         }
     }
 
-    CalculateMatrix( viewMatrix , projectionMatrix ) {
-        this.worldMatrix = matrix4x4.Mult( this.worldMatrix , projectionMatrix );
-        this.worldMatrix = matrix4x4.Mult( this.worldMatrix , viewMatrix );
-    }
-
-    Draw( gl ) {
+    Draw( gl , viewMatrix ) {
         gl.useProgram( this.program.program );
-        gl.uniformMatrix4fv( this.program.u_matrix , true , this.worldMatrix);
+        gl.uniformMatrix4fv( this.program.u_matrix , true , matrix4x4.Mult( viewMatrix , this.worldMatrix ) );
+        gl.uniformMatrix4fv( this.program.u_inverseTransposedMatrix , true , this.inverseTransposeWorldMatrix );
         gl.bindVertexArray( this.vao );
         gl.bindTexture(gl.TEXTURE_2D, this.texture);
         if( this.drawWireframe ) {
@@ -70,7 +69,7 @@ export class Obj {
             gl.drawElements( gl.TRIANGLES , this.countFaces , gl.UNSIGNED_SHORT, 0);
         } 
         for (let index = 0; index < this.children.length; index++) {
-            this.children[index].Draw( gl  );
+            this.children[index].Draw( gl , viewMatrix );
         }
     }
     AddToScene( parentName , obj ) {
@@ -121,19 +120,22 @@ export class Obj {
 }
 
 export class Cloud extends Obj {
+    baseHeight = 0;
     height = 0;
-    speed = 30;
+    rotationSpeed = vector4.Identity();
+    baseScale = vector4.Identity();
     heightPorcentage = 1.1;
-    direction = vector4.Create( 0 , 0 , 1 , 1 );
-    startUp = vector4.Create( 0 , 1 , 0 , 1 );
-    rotationMatrix = matrix4x4.Identity();
-    constructor( gl , program , name , radiusPlanet ) {
+    scaleHeight = 0;
+    constructor( gl , program , name , radiusPlanet , baseRotation ) {
         super( gl , program , name );
-        this.rotation = vector4.Create( 0 , 0 , 0 , 1 ); 
+        this.rotation = vector4.Create( 0 , 0 , 0 , 1 );
+        this.rotation = baseRotation; 
         this.scale = vector4.Create( 0.1 , 0.1 , 0.1 , 1 );
+        this.baseScale = vector4.Create( 0.1 , 0.1 , 0.1 , 1 );
         this.position = vector4.Create( 0 , 0 , 0 , 1 );
+        this.baseHeight = radiusPlanet;
+        this.rotationSpeed = vector4.Create( .15 , .15 , .15 , 1 );
         this.SetHeight( radiusPlanet );
-        this.position[1] = this.height;
     }
     async LoadObj( gl ) {
         let obj = await gl_lib.LoadObj( "./resources/cloud.obj" );
@@ -149,14 +151,15 @@ export class Cloud extends Obj {
 
     CalculateWorldMatrix( parentMatrix ) {
         this.worldMatrix = matrix4x4.Identity();
-        this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.Translation( this.position[0] , this.position[1] , this.position[2] ) );
         this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.XRotation( this.rotation[0] ) );
         this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.YRotation( this.rotation[1] ) );
         this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.ZRotation( this.rotation[2] ) );
-        this.worldMatrix = matrix4x4.Mult( this.worldMatrix , this.rotationMatrix );
+        this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.Translation( this.position[0] , this.position[1] , this.position[2] ) );
         this.worldMatrix = matrix4x4.Mult( this.worldMatrix , matrix4x4.Scaling( this.scale[0] , this.scale[1] , this.scale[2] ) );
         this.worldMatrix = matrix4x4.Mult( parentMatrix , this.worldMatrix );
         
+        this.inverseTransposeWorldMatrix = matrix4x4.Transpose( matrix4x4.Inverse( this.worldMatrix ) );
+
         for (let index = 0; index < this.children.length; index++) {
             this.children[index].CalculateWorldMatrix( this.worldMatrix );
         }
@@ -164,35 +167,17 @@ export class Cloud extends Obj {
 
     SetHeight( radiusPlanet ) {
         this.height = radiusPlanet * this.heightPorcentage;
+        this.position[1] = this.height;
+        this.scaleHeight = radiusPlanet / this.baseHeight;
+        this.scale[0] = this.baseScale[0] * this.scaleHeight;
+        this.scale[1] = this.baseScale[1] * this.scaleHeight;
+        this.scale[2] = this.baseScale[2] * this.scaleHeight;
     }
 
     Animate( gl , deltaTime ) {
-        let auxPosition = vector4.Sum( this.position , vector4.MultByEscalar( this.direction , this.speed * deltaTime ) );
-        let distance = vector4.Lenght( auxPosition );
-        let downSizePorcentage = this.height / distance;
-        auxPosition = vector4.MultByEscalar( auxPosition , downSizePorcentage );
-        this.position = auxPosition; 
-
-        let upDir;
-        upDir = vector4.Normalize( this.position );
-
-        /* if (Math.abs( vector4.Dot( upDir , this.direction ) ) > 0.999) {
-            this.direction = [1, 0, 0, 0];
-        } */
-
-        let right = vector4.Normalize(vector4.Cross( this.direction , upDir));
-        this.direction = vector4.Cross( upDir , right);
-        
-        this.direction = vector4.Normalize( this.direction );
-
-        this.rotationMatrix = [
-            right[0], right[1], right[2] , 0,
-            upDir[0], upDir[1], upDir[2], 0,
-            this.direction[0], this.direction[1], this.direction[2], 0,
-            0, 0, 0, 1
-        ];
-
-        console.log( this.position , right , upDir , this.direction );
+        this.rotation[0] += this.rotationSpeed[0] * this.scaleHeight * deltaTime * ( Math.random() % 2 );
+        this.rotation[1] += this.rotationSpeed[1] * this.scaleHeight * deltaTime * ( Math.random() % 2 );
+        this.rotation[2] += this.rotationSpeed[2] * this.scaleHeight * deltaTime * ( Math.random() % 2 );
 
         super.Animate( gl );
     }
@@ -280,9 +265,9 @@ export class World extends Obj {
             this.children[index].CalculateWorldMatrix( parentMatrix );
         }
     }
-    Draw( gl ) {
+    Draw( gl , viewMatrix ) {
         for (let index = 0; index < this.children.length; index++) {
-            this.children[index].Draw( gl );
+            this.children[index].Draw( gl , viewMatrix );
         }
     }
 }

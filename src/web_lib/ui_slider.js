@@ -59,6 +59,9 @@ export class Slider_Radius extends Slider {
         this.scene.Search( "planet" ).radius = this.value;
         this.scene.Search( "planet" ).ClearVao( this.gl );
         this.scene.Search( "planet" ).Lathe( this.gl );
+        this.scene.Search( "cloud-1" ).SetHeight( this.value );
+        this.scene.Search( "cloud-2" ).SetHeight( this.value );
+        this.scene.Search( "cloud-3" ).SetHeight( this.value );
     }
 }
 
